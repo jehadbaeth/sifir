@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  rust:
+    name: Rust
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: poc
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: poc
+
+      # ── format ───────────────────────────────────────────────────────────────
+      - name: Check formatting
+        run: cargo fmt --check
+
+      # ── clippy ───────────────────────────────────────────────────────────────
+      - name: Clippy (default features)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Clippy (real-attestation + gpu-cc)
+        run: >
+          cargo clippy
+          -p sifir-server --all-targets
+          --features real-attestation,gpu-cc
+          -- -D warnings
+
+      # ── unit tests ───────────────────────────────────────────────────────────
+      - name: Unit tests (default features)
+        run: cargo test
+
+      - name: Unit tests (server real-attestation)
+        run: cargo test -p sifir-server --features real-attestation
+
+      # ── feature compilation gates ────────────────────────────────────────────
+      - name: Build (real-attestation)
+        run: cargo build -p sifir-server --features real-attestation
+
+      - name: Build (real-attestation + gpu-cc)
+        run: cargo build -p sifir-server --features real-attestation,gpu-cc
+
+      # ── Phase 1 integration test ─────────────────────────────────────────────
+      # Tests the full RA-TLS handshake in mock mode: server generates an
+      # attested cert, client verifies the report before sending any data.
+      # No AMD hardware required.
+      - name: Build debug binaries for integration test
+        run: cargo build -p sifir-server -p sifir-client
+
+      - name: Integration — mock attestation (happy path + rejection)
+        run: |
+          set -euo pipefail
+
+          # Start server in background; arrange cleanup on exit
+          ./target/debug/sifir-server --listen 127.0.0.1:7443 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          # Wait up to 15 s for the server to accept connections
+          echo "Waiting for server..."
+          for i in $(seq 1 30); do
+            curl -sk --max-time 1 https://127.0.0.1:7443/health 2>/dev/null \
+              | grep -q "ok" && break
+            sleep 0.5
+          done
+          curl -sk https://127.0.0.1:7443/health | grep -q "ok" \
+            || { echo "FAIL: server did not start in time"; exit 1; }
+          echo "Server is up."
+
+          # ── happy path ──────────────────────────────────────────────────────
+          OUTPUT=$(./target/debug/sifir-client --server 127.0.0.1:7443 "hello ci" 2>/dev/null)
+          echo "Client output: $OUTPUT"
+          echo "$OUTPUT" | grep -q "mock inference" \
+            || { echo "FAIL: expected 'mock inference' in output"; exit 1; }
+          echo "PASS: happy path."
+
+          # ── rejection path ──────────────────────────────────────────────────
+          # Wrong measurement (96 hex 'a' chars = 48 bytes of 0xAA).
+          # The client must reject and exit non-zero before sending the prompt.
+          WRONG_MEAS="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          if ./target/debug/sifir-client \
+              --server 127.0.0.1:7443 \
+              --expected-measurement "$WRONG_MEAS" \
+              "hello ci" 2>/dev/null
+          then
+            echo "FAIL: client with wrong measurement should have been rejected"
+            exit 1
+          fi
+          echo "PASS: wrong measurement correctly rejected (exit code $?)."
+
+  python:
+    name: Python
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff --quiet
+
+      - name: Syntax check
+        run: python3 -m py_compile poc/inference/server.py poc/inference/gpu_attest.py
+
+      - name: Lint (ruff — errors only)
+        run: ruff check poc/inference/
