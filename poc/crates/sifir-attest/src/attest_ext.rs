@@ -71,7 +71,7 @@ impl AttestationExtension {
     pub fn report_bytes(&self) -> anyhow::Result<[u8; REPORT_SIZE]> {
         let raw = B64.decode(&self.report_b64)?;
         raw.try_into()
-            .map_err(|_| anyhow::anyhow!("report is not {} bytes", REPORT_SIZE))
+            .map_err(|_| anyhow::anyhow!("report is not {REPORT_SIZE} bytes"))
     }
 
     /// Decode the VCEK chain as raw DER certificate bytes.

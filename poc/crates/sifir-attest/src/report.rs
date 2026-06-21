@@ -101,7 +101,9 @@ impl Report {
 
 impl Default for Report {
     fn default() -> Self {
-        Self { raw: [0u8; REPORT_SIZE] }
+        Self {
+            raw: [0u8; REPORT_SIZE],
+        }
     }
 }
 
@@ -123,8 +125,7 @@ mod tests {
     fn field_roundtrip() {
         let mut r = Report::default();
         let measurement = [0xab_u8; MEASUREMENT_SIZE];
-        r.raw[OFF_MEASUREMENT..OFF_MEASUREMENT + MEASUREMENT_SIZE]
-            .copy_from_slice(&measurement);
+        r.raw[OFF_MEASUREMENT..OFF_MEASUREMENT + MEASUREMENT_SIZE].copy_from_slice(&measurement);
         assert_eq!(r.measurement(), &measurement);
     }
 }

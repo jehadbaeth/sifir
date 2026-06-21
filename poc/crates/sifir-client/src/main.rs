@@ -50,8 +50,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Parse expected measurement.
     let measurement_hex = args.expected_measurement.trim();
-    let measurement_bytes = hex::decode(measurement_hex)
-        .context("expected_measurement must be a valid hex string")?;
+    let measurement_bytes =
+        hex::decode(measurement_hex).context("expected_measurement must be a valid hex string")?;
     if measurement_bytes.len() != MEASUREMENT_SIZE {
         anyhow::bail!(
             "expected_measurement must be {} bytes ({} hex chars), got {} bytes",

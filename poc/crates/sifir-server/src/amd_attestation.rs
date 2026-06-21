@@ -1,17 +1,16 @@
-/// Real AMD SEV-SNP attestation via /dev/snp-guest ioctl.
-///
-/// Only compiled when `--features real-attestation` is set. Requires:
-///   - Linux 5.19+ kernel with `sev_guest` driver
-///   - Running inside an AMD SEV-SNP VM (Azure DCasv5 / NCC H100 v5)
-///   - `/dev/snp-guest` device accessible (usually needs `sudo` or
-///     `GRUB_CMDLINE_LINUX="... mem_encrypt=on iommu=force"`)
-///
-/// Flow:
-///   1. ioctl on /dev/snp-guest → 1184-byte attestation report
-///   2. Extract chip_id and TCB version from the report
-///   3. Fetch VCEK DER from AMD KDS (per-chip cert, binds chip_id + TCB)
-///   4. Fetch ARK + ASK PEM bundle from AMD KDS (stable root/intermediate chain)
-///   5. Return (report_bytes, [vcek_der, ask_der, ark_der])
+//! Real AMD SEV-SNP attestation via /dev/snp-guest ioctl.
+//!
+//! Only compiled when `--features real-attestation` is set. Requires:
+//!   - Linux 5.19+ kernel with `sev_guest` driver
+//!   - Running inside an AMD SEV-SNP VM (Azure DCasv5 / NCC H100 v5)
+//!   - `/dev/snp-guest` device accessible
+//!
+//! Flow:
+//!   1. ioctl on /dev/snp-guest → 1184-byte attestation report
+//!   2. Extract chip_id and TCB version from the report
+//!   3. Fetch VCEK DER from AMD KDS (per-chip cert, binds chip_id + TCB)
+//!   4. Fetch ARK + ASK PEM bundle from AMD KDS (stable root/intermediate chain)
+//!   5. Return (report_bytes, [vcek_der, ask_der, ark_der])
 
 use anyhow::{bail, Context};
 
@@ -62,7 +61,7 @@ const KDS_BASE: &str = "https://kdsintf.amd.com/vcek/v1";
 // Offsets into the 1184-byte attestation report (AMD SEV-SNP spec, Table 22).
 // These are the reported_tcb (8 bytes) and chip_id (64 bytes) fields.
 const OFF_REPORTED_TCB: usize = 0x038; // 56
-const OFF_CHIP_ID: usize = 0x188;      // 392
+const OFF_CHIP_ID: usize = 0x188; // 392
 const CHIP_ID_LEN: usize = 64;
 
 // TCB_VERSION byte layout (little-endian packed u64):
@@ -215,8 +214,7 @@ async fn fetch_vcek_chain(
 
     // Parse the PEM bundle into individual DER certs.
     // cert_chain endpoint returns [ASK, ARK] concatenated PEM.
-    let pem_certs = parse_pem_bundle(&chain_pem)
-        .context("parse cert_chain PEM bundle")?;
+    let pem_certs = parse_pem_bundle(&chain_pem).context("parse cert_chain PEM bundle")?;
 
     if pem_certs.len() < 2 {
         bail!(

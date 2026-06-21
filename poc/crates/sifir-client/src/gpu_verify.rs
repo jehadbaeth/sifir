@@ -60,10 +60,7 @@ struct NvidiaClaims {
 ///
 /// `jwt`: the NRAS JWT string from `AttestationExtension::gpu_jwt`.
 /// `tls_pubkey_der`: SPKI DER of the server's TLS certificate.
-pub fn verify_gpu_jwt(
-    jwt: &str,
-    tls_pubkey_der: &[u8],
-) -> Result<GpuClaims, GpuVerifyError> {
+pub fn verify_gpu_jwt(jwt: &str, tls_pubkey_der: &[u8]) -> Result<GpuClaims, GpuVerifyError> {
     // JWT format: header_b64url.payload_b64url.signature_b64url
     let parts: Vec<&str> = jwt.split('.').collect();
     if parts.len() != 3 {

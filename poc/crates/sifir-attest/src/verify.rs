@@ -86,8 +86,7 @@ fn verify_signature(report: &Report, key: &AttestationKey) -> Result<(), VerifyE
     sig_bytes[..48].copy_from_slice(report.sig_r());
     sig_bytes[48..].copy_from_slice(report.sig_s());
 
-    let sig = Signature::try_from(sig_bytes.as_slice())
-        .map_err(|_| VerifyError::BadSignature)?;
+    let sig = Signature::try_from(sig_bytes.as_slice()).map_err(|_| VerifyError::BadSignature)?;
 
     let verifying_key = match key {
         AttestationKey::Mock => {
@@ -95,9 +94,7 @@ fn verify_signature(report: &Report, key: &AttestationKey) -> Result<(), VerifyE
             VerifyingKey::from_sec1_bytes(&sec1)
                 .map_err(|e| VerifyError::Internal(e.to_string()))?
         }
-        AttestationKey::Amd { vcek_chain } => {
-            crate::amd_certs::vcek_verifying_key(vcek_chain)?
-        }
+        AttestationKey::Amd { vcek_chain } => crate::amd_certs::vcek_verifying_key(vcek_chain)?,
     };
 
     verifying_key

@@ -44,9 +44,8 @@ pub fn vcek_verifying_key(chain: &[Vec<u8>]) -> Result<VerifyingKey, VerifyError
 
     // 1. Verify ARK is self-signed (issuer == subject, signature valid under its own key).
     let ark_vk = extract_p384_key(&ark)?;
-    verify_cert_signature(&ark, &ark_vk).map_err(|e| {
-        VerifyError::CertChain(format!("ARK self-signature invalid: {e}"))
-    })?;
+    verify_cert_signature(&ark, &ark_vk)
+        .map_err(|e| VerifyError::CertChain(format!("ARK self-signature invalid: {e}")))?;
 
     // TODO (production): pin the ARK public key against AMD's published constant.
     // Without this, the chain is internally consistent but not root-anchored.
@@ -55,23 +54,20 @@ pub fn vcek_verifying_key(chain: &[Vec<u8>]) -> Result<VerifyingKey, VerifyError
     // embedded as a compile-time constant, not fetched at runtime.
 
     // 2. Verify ASK is signed by ARK.
-    verify_cert_signature(&ask, &ark_vk).map_err(|e| {
-        VerifyError::CertChain(format!("ASK signature invalid (ARK): {e}"))
-    })?;
+    verify_cert_signature(&ask, &ark_vk)
+        .map_err(|e| VerifyError::CertChain(format!("ASK signature invalid (ARK): {e}")))?;
 
     // 3. Verify VCEK is signed by ASK.
     let ask_vk = extract_p384_key(&ask)?;
-    verify_cert_signature(&vcek, &ask_vk).map_err(|e| {
-        VerifyError::CertChain(format!("VCEK signature invalid (ASK): {e}"))
-    })?;
+    verify_cert_signature(&vcek, &ask_vk)
+        .map_err(|e| VerifyError::CertChain(format!("VCEK signature invalid (ASK): {e}")))?;
 
     // 4. Return VCEK public key for report signature verification.
     extract_p384_key(&vcek)
 }
 
 fn parse_cert(der: &[u8]) -> Result<Certificate, VerifyError> {
-    Certificate::from_der(der)
-        .map_err(|e| VerifyError::CertChain(format!("DER parse error: {e}")))
+    Certificate::from_der(der).map_err(|e| VerifyError::CertChain(format!("DER parse error: {e}")))
 }
 
 fn extract_p384_key(cert: &Certificate) -> Result<VerifyingKey, VerifyError> {
@@ -85,10 +81,7 @@ fn extract_p384_key(cert: &Certificate) -> Result<VerifyingKey, VerifyError> {
         .map_err(|e| VerifyError::CertChain(format!("P-384 key parse error: {e}")))
 }
 
-fn verify_cert_signature(
-    cert: &Certificate,
-    issuer_key: &VerifyingKey,
-) -> Result<(), VerifyError> {
+fn verify_cert_signature(cert: &Certificate, issuer_key: &VerifyingKey) -> Result<(), VerifyError> {
     let tbs_der = cert
         .tbs_certificate
         .to_der()

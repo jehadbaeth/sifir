@@ -169,11 +169,7 @@ fn extract_attest_extension(
         .parse()
         .map_err(|e| TlsError::General(format!("OID parse error: {e}")))?;
 
-    let extensions = cert
-        .tbs_certificate
-        .extensions
-        .as_deref()
-        .unwrap_or(&[]);
+    let extensions = cert.tbs_certificate.extensions.as_deref().unwrap_or(&[]);
 
     let ext = extensions
         .iter()

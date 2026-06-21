@@ -8,12 +8,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize)]
 pub struct GenerateRequest {
     pub prompt: String,
-    #[serde(default = "default_max_tokens")]
-    pub max_tokens: u32,
-}
-
-fn default_max_tokens() -> u32 {
-    512
 }
 
 #[derive(Serialize)]
@@ -52,11 +46,7 @@ pub async fn handle_generate(
         }
         Err(e) => {
             eprintln!("[proxy] backend error: {e}");
-            (
-                StatusCode::BAD_GATEWAY,
-                format!("backend unavailable: {e}"),
-            )
-                .into_response()
+            (StatusCode::BAD_GATEWAY, format!("backend unavailable: {e}")).into_response()
         }
     }
 }

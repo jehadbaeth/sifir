@@ -9,12 +9,7 @@ mod amd_attestation;
 mod gpu_attestation;
 
 use axum::{
-    body::Body,
-    extract::State,
-    http::Request,
-    response::IntoResponse,
-    routing::post,
-    Router,
+    body::Body, extract::State, http::Request, response::IntoResponse, routing::post, Router,
 };
 use clap::Parser;
 use hyper_util::rt::{TokioExecutor, TokioIo};
