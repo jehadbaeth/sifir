@@ -452,14 +452,17 @@ struct Args {
     #[arg(long, default_value = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")]
     expected_measurement: String,
 
-    /// Use mock attestation key instead of AMD key chain
-    #[arg(long, default_value = "true")]
-    mock: bool,
+    /// Use AMD cert chain verification instead of the mock key (Phase 3+).
+    /// Default: mock mode (Phases 1 and 2). Pass --amd for Phase 3+.
+    #[arg(long, default_value_t = false)]
+    amd: bool,
 
     /// Prompt to send
     prompt: String,
 }
 ```
+
+Note: see `DEVIATIONS.md` D1 for why this differs from the original `--mock` flag design.
 
 To validate: `cargo test -p sifir-client` — use a `tokio::test` that starts a mock server and verifies the client accepts valid attestation and rejects tampered measurement.
 
