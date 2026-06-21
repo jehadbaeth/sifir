@@ -34,7 +34,7 @@ print(f"[inference] loading model from {MODEL_PATH}", flush=True)
 print(f"[inference] n_gpu_layers={N_GPU_LAYERS}, n_ctx={N_CTX}", flush=True)
 
 t0 = time.time()
-from llama_cpp import Llama
+from llama_cpp import Llama  # noqa: E402
 llm = Llama(
     model_path=MODEL_PATH,
     n_gpu_layers=N_GPU_LAYERS,
