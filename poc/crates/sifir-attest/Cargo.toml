@@ -13,6 +13,8 @@ base64.workspace = true
 hex.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
+x509-cert.workspace = true
+const-oid.workspace = true
 
 [dev-dependencies]
 rand_core.workspace = true

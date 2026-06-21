@@ -1622,6 +1622,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64",
+ "const-oid",
  "ecdsa",
  "hex",
  "p384",
@@ -1630,6 +1631,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "thiserror 1.0.69",
+ "x509-cert",
 ]
 
 [[package]]
@@ -1665,6 +1667,7 @@ dependencies = [
  "hex",
  "hyper",
  "hyper-util",
+ "libc",
  "rcgen",
  "reqwest",
  "rustls",

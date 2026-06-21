@@ -24,6 +24,7 @@ clap.workspace = true
 x509-cert.workspace = true
 const-oid.workspace = true
 hex.workspace = true
+libc.workspace = true
 
 [features]
 real-attestation = []

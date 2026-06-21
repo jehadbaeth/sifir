@@ -2,6 +2,9 @@ mod attest_ext;
 mod proxy;
 mod tls;
 
+#[cfg(feature = "real-attestation")]
+mod amd_attestation;
+
 use axum::{
     body::Body,
     extract::State,
@@ -16,7 +19,7 @@ use tokio::net::TcpListener;
 use tower::ServiceExt;
 
 #[derive(Parser, Debug)]
-#[command(about = "Sifir RA-TLS gateway — Phase 1 (mock attestation)")]
+#[command(about = "Sifir RA-TLS gateway")]
 struct Args {
     /// Address to listen on.
     #[arg(long, default_value = "0.0.0.0:7443")]
@@ -26,6 +29,16 @@ struct Args {
     /// Omit to run without a backend (echo mode for Phase 1 testing).
     #[arg(long)]
     backend: Option<String>,
+
+    /// Use real AMD SEV-SNP attestation (requires --features real-attestation
+    /// and /dev/snp-guest). Omit to use mock attestation (Phases 1–2).
+    #[arg(long, default_value_t = false)]
+    amd: bool,
+
+    /// AMD product name for KDS cert chain lookup.
+    /// Azure DCasv5 = "Milan", Azure NCC H100 v5 = "Genoa".
+    #[arg(long, default_value = "Milan")]
+    snp_product: String,
 }
 
 #[derive(Clone)]
@@ -49,11 +62,28 @@ async fn health_handler() -> &'static str {
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
-    println!("[sifir-server] building TLS setup (mock attestation)...");
-    let setup = tls::build_mock_setup().await?;
+    let setup = if args.amd {
+        #[cfg(feature = "real-attestation")]
+        {
+            println!(
+                "[sifir-server] building TLS setup (AMD SEV-SNP, product={})...",
+                args.snp_product
+            );
+            tls::build_amd_setup(&args.snp_product).await?
+        }
+        #[cfg(not(feature = "real-attestation"))]
+        {
+            anyhow::bail!(
+                "--amd requires compiling with `--features real-attestation`"
+            );
+        }
+    } else {
+        println!("[sifir-server] building TLS setup (mock attestation)...");
+        tls::build_mock_setup().await?
+    };
 
     println!(
-        "[sifir-server] measurement (all-zeros in mock mode): {}",
+        "[sifir-server] measurement: {}",
         hex::encode(setup.measurement)
     );
     println!("[sifir-server] listening on https://{}", args.listen);

@@ -43,6 +43,9 @@ clap = { version = "4", features = ["derive"] }
 thiserror = "1"
 anyhow = "1"
 
+# Linux ioctl (sifir-server real-attestation feature only)
+libc = "0.2"
+
 # Cert parsing (client-side extraction of X.509 extension)
 x509-cert = "0.2"
 const-oid = "0.9"

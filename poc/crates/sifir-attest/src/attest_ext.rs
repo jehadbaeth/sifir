@@ -40,6 +40,17 @@ impl AttestationExtension {
         }
     }
 
+    /// Build a real AMD SEV-SNP extension from a raw report and VCEK chain.
+    /// `chain`: DER-encoded certs in order [VCEK, ASK, ARK].
+    pub fn new_amd(report_bytes: &[u8; REPORT_SIZE], chain: &[Vec<u8>]) -> Self {
+        Self {
+            report_b64: B64.encode(report_bytes),
+            vcek_chain_b64: chain.iter().map(|c| B64.encode(c)).collect(),
+            mode: AttestationMode::AmdSevSnp,
+            gpu_jwt: None,
+        }
+    }
+
     /// Serialise for embedding as the X.509 extension value bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).expect("AttestationExtension serialisation is infallible")
