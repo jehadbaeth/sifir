@@ -5,6 +5,9 @@ mod tls;
 #[cfg(feature = "real-attestation")]
 mod amd_attestation;
 
+#[cfg(feature = "gpu-cc")]
+mod gpu_attestation;
+
 use axum::{
     body::Body,
     extract::State,
@@ -39,6 +42,16 @@ struct Args {
     /// Azure DCasv5 = "Milan", Azure NCC H100 v5 = "Genoa".
     #[arg(long, default_value = "Milan")]
     snp_product: String,
+
+    /// Append NVIDIA GPU CC attestation JWT to the TLS cert extension.
+    /// Requires --amd, --features gpu-cc, and the NVIDIA attestation SDK.
+    #[arg(long, default_value_t = false)]
+    gpu_cc: bool,
+
+    /// Path to poc/inference/gpu_attest.py.
+    /// Required when --gpu-cc is set.
+    #[arg(long)]
+    gpu_attest_script: Option<String>,
 }
 
 #[derive(Clone)]
@@ -62,24 +75,44 @@ async fn health_handler() -> &'static str {
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
-    let setup = if args.amd {
-        #[cfg(feature = "real-attestation")]
-        {
-            println!(
-                "[sifir-server] building TLS setup (AMD SEV-SNP, product={})...",
-                args.snp_product
-            );
-            tls::build_amd_setup(&args.snp_product).await?
+    let setup = match (args.amd, args.gpu_cc) {
+        (false, _) => {
+            println!("[sifir-server] building TLS setup (mock attestation)...");
+            tls::build_mock_setup().await?
         }
-        #[cfg(not(feature = "real-attestation"))]
-        {
-            anyhow::bail!(
-                "--amd requires compiling with `--features real-attestation`"
-            );
+        (true, false) => {
+            #[cfg(feature = "real-attestation")]
+            {
+                println!(
+                    "[sifir-server] building TLS setup (AMD SEV-SNP, product={})...",
+                    args.snp_product
+                );
+                tls::build_amd_setup(&args.snp_product).await?
+            }
+            #[cfg(not(feature = "real-attestation"))]
+            {
+                anyhow::bail!("--amd requires compiling with `--features real-attestation`");
+            }
         }
-    } else {
-        println!("[sifir-server] building TLS setup (mock attestation)...");
-        tls::build_mock_setup().await?
+        (true, true) => {
+            #[cfg(all(feature = "real-attestation", feature = "gpu-cc"))]
+            {
+                let script = args.gpu_attest_script.as_deref().ok_or_else(|| {
+                    anyhow::anyhow!("--gpu-cc requires --gpu-attest-script <path>")
+                })?;
+                println!(
+                    "[sifir-server] building TLS setup (AMD SEV-SNP + GPU CC, product={})...",
+                    args.snp_product
+                );
+                tls::build_amd_gpu_setup(&args.snp_product, script).await?
+            }
+            #[cfg(not(all(feature = "real-attestation", feature = "gpu-cc")))]
+            {
+                anyhow::bail!(
+                    "--gpu-cc requires compiling with `--features real-attestation,gpu-cc`"
+                );
+            }
+        }
     };
 
     println!(

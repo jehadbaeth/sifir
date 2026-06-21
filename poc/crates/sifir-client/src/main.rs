@@ -1,3 +1,4 @@
+mod gpu_verify;
 mod request;
 mod verifier;
 
@@ -29,6 +30,11 @@ struct Args {
     /// Default: mock mode (Phases 1 and 2). Pass --amd for Phase 3+.
     #[arg(long, default_value_t = false)]
     amd: bool,
+
+    /// Require and verify NVIDIA GPU CC attestation JWT in the server cert.
+    /// Only valid with --amd (Phase 4, Azure NCC H100 v5).
+    #[arg(long, default_value_t = false)]
+    gpu_cc: bool,
 
     /// Maximum tokens to generate.
     #[arg(long, default_value_t = 512)]
@@ -74,7 +80,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Set up rustls with our custom attestation verifier.
     let crypto_provider = Arc::new(default_provider());
-    let verifier = AttestationVerifier::new(expected_measurement, mode, Arc::clone(&crypto_provider));
+    let verifier = AttestationVerifier::new(
+        expected_measurement,
+        mode,
+        args.gpu_cc,
+        Arc::clone(&crypto_provider),
+    );
 
     let tls_config = rustls::ClientConfig::builder()
         .dangerous()

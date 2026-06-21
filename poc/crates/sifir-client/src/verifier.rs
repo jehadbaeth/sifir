@@ -13,10 +13,14 @@ use x509_cert::der::{Decode, Encode};
 
 use sifir_attest::attest_ext::{AttestationExtension, AttestationMode, ATTEST_OID_STR};
 
+use crate::gpu_verify;
+
 #[derive(Debug)]
 pub struct AttestationVerifier {
     expected_measurement: [u8; MEASUREMENT_SIZE],
     mode: VerifierMode,
+    /// When true, require and verify the GPU CC attestation JWT in the extension.
+    pub verify_gpu_cc: bool,
     crypto_provider: Arc<CryptoProvider>,
 }
 
@@ -30,11 +34,13 @@ impl AttestationVerifier {
     pub fn new(
         expected_measurement: [u8; MEASUREMENT_SIZE],
         mode: VerifierMode,
+        verify_gpu_cc: bool,
         crypto_provider: Arc<CryptoProvider>,
     ) -> Self {
         Self {
             expected_measurement,
             mode,
+            verify_gpu_cc,
             crypto_provider,
         }
     }
@@ -94,7 +100,28 @@ impl ServerCertVerifier for AttestationVerifier {
         )
         .map_err(|e| TlsError::General(format!("attestation failed: {e}")))?;
 
-        println!("[client] attestation verified successfully");
+        eprintln!("[client] CPU attestation verified (AMD SEV-SNP / mock)");
+
+        // GPU CC JWT check (Phase 4 only).
+        if self.verify_gpu_cc {
+            match &attest_ext.gpu_jwt {
+                Some(jwt) => {
+                    let claims = gpu_verify::verify_gpu_jwt(jwt, &spki_der)
+                        .map_err(|e| TlsError::General(format!("GPU JWT failed: {e}")))?;
+                    eprintln!(
+                        "[client] GPU attestation verified: model={}, cc_mode={}",
+                        claims.gpu_model, claims.cc_mode
+                    );
+                }
+                None => {
+                    return Err(TlsError::General(
+                        "--gpu-cc set but server cert has no GPU JWT".into(),
+                    ));
+                }
+            }
+        }
+
+        eprintln!("[client] attestation verified successfully");
         Ok(ServerCertVerified::assertion())
     }
 

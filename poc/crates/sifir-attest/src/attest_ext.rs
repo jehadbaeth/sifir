@@ -51,6 +51,13 @@ impl AttestationExtension {
         }
     }
 
+    /// Builder: attach a NVIDIA GPU CC attestation JWT (Phase 4).
+    /// Call after `new_mock()` or `new_amd()`.
+    pub fn with_gpu_jwt(mut self, jwt: String) -> Self {
+        self.gpu_jwt = Some(jwt);
+        self
+    }
+
     /// Serialise for embedding as the X.509 extension value bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).expect("AttestationExtension serialisation is infallible")
