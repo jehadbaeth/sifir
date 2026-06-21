@@ -1,0 +1,9 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+# llama-cpp-python: install with CUDA support on the 3070:
+#   CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python==0.3.4
+# Metal (Apple Silicon):
+#   CMAKE_ARGS="-DGGML_METAL=on" pip install llama-cpp-python==0.3.4
+# CPU only fallback:
+#   pip install llama-cpp-python==0.3.4
+llama-cpp-python==0.3.4
